@@ -1,0 +1,16 @@
+{
+  "name": "ts-custy",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Goitseone Themba",
+  "license": "ISC",
+  "description": "A CLI app to keep track of the customers we are current customers",
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "typescript": "^5.5.4"
+  }
+}

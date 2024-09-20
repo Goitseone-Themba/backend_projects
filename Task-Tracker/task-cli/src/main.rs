@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{Read, Write, Error};
 use std::time::SystemTime;
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -28,7 +28,7 @@ impl TaskCli {
 
     // read from the json file
     fn read_json(&self) -> Vec<Task> {
-        let file_result = File::open(&self.json_filename);
+        let file_result: Result<File, Error> = File::open(&self.json_filename);
 
         match file_result {
             Ok(mut file) => {
@@ -40,16 +40,16 @@ impl TaskCli {
         }
     }
 
-    //write to the json file
+    // write to the json file
     fn write_json(&self, tasks: &Vec<Task>) {
-        let json_string = serde_json::to_string_pretty(&tasks).unwrap();
-        let mut file = File::create(&self.json_filename).unwrap();
+        let json_string: String = serde_json::to_string_pretty(&tasks).unwrap();
+        let mut file: File = File::create(&self.json_filename).unwrap();
         file.write_all(json_string.as_bytes()).unwrap();
     }
 
-    //adding a new task
+    // add a new task
     fn add(&self, description: String) {
-        let mut tasks = self.read_json();
+        let mut tasks: Vec<Task> = self.read_json();
         let new_task: Task = Task {
             id: u32::try_from(tasks.len() + 1).unwrap(),
             description,
@@ -61,6 +61,12 @@ impl TaskCli {
         self.write_json(&tasks);
         println!("Tasks added successfully (ID: {})", tasks.len());
     }
+
+    // list all tasks
+    fn list(&self) {
+       let tasks: Vec<Task> = self.read_json();
+       println!("{:#?}", tasks); 
+    }
 }
 
 fn main() {
@@ -68,13 +74,12 @@ fn main() {
 
     let args: Vec<String> = std::env::args().collect();
 
-    if args.len() < 3 {
+    if args.len() < 2 {
         println!("usage: {} <command> <argument>", args[0]);
         return;
     }
 
     let command = &args[1];
-    let argument = &args[2];
 
     match command.as_str() {
         "add" => {
@@ -82,8 +87,9 @@ fn main() {
                 println!("add usage: {} add <your task>", &args[0]);
                 return;
             }
-            task_cli.add(String::from(argument))
-        }
+            task_cli.add(String::from(&args[2]))
+        },
+        "list" => task_cli.list(),
         _ => println!("command: \"{}\" not found", command),
     }
 }

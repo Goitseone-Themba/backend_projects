@@ -176,6 +176,16 @@ impl TaskCli {
             }
         }
     }
+
+    fn update(&self,id: &u32, description: &String) {
+        let mut tasks: Vec<Task> = self.read_json();
+        for i in &mut tasks {
+            if i.id == *id {
+                i.description = description.to_string();
+            }
+        }
+        self.write_json(&tasks);
+    }
 }
 
 fn main() {
@@ -209,7 +219,22 @@ fn main() {
                     _ => task_cli.list(),
                 }
             }
-        }
+        },
+        "update" => {
+            if args.len() < 4 {
+                println!("update usage: {} update <id> <new description>", &args[0]);
+                return;
+            } else {
+                let id: u32 = match &args[2].trim().parse() {
+                    Ok(num) => *num,
+                    Err(_) => {
+                        print!("Error! can't read id: {}", &args[2]);
+                        return;
+                    },
+                };
+                task_cli.update(&id, &args[3]);
+            }
+        },
         _ => println!("command: \"{}\" not found", command),
     }
 }

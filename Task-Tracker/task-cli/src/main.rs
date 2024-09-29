@@ -1,17 +1,16 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::fs::File;
-use std::io::{Read, Write, Error};
-use std::time::SystemTime;
-
-#[derive(Serialize, Deserialize, Debug)]
+use std::io::{Error, Read, Write};
 
 // data model for each task
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct Task {
     id: u32,
     description: String,
     status: String,
-    created_at: SystemTime,
-    updated_at: SystemTime,
+    created_at: DateTime<Utc>,
+    updated_at: DateTime<Utc>,
 }
 
 // data model for the json file
@@ -50,12 +49,16 @@ impl TaskCli {
     // add a new task
     fn add(&self, description: String) {
         let mut tasks: Vec<Task> = self.read_json();
+        let this_time: DateTime<Utc> = Utc::now();
+
+        println!("{}", this_time.format("%d-%b-%y %H:%M:%S"));
+
         let new_task: Task = Task {
             id: u32::try_from(tasks.len() + 1).unwrap(),
             description,
-            status: String::from("to_do"),
-            created_at: SystemTime::now(),
-            updated_at: SystemTime::now(),
+            status: String::from("todo"),
+            created_at: this_time,
+            updated_at: this_time,
         };
         tasks.push(new_task);
         self.write_json(&tasks);
@@ -64,8 +67,114 @@ impl TaskCli {
 
     // list all tasks
     fn list(&self) {
-       let tasks: Vec<Task> = self.read_json();
-       println!("{:#?}", tasks); 
+        let tasks: Vec<Task> = self.read_json();
+        if tasks.len() == 0 {
+            println!("There are currently no tasks");
+        } else {
+            for i in tasks.iter() {
+                println!(
+                    "{} {}, status: {}, {}, {}",
+                    i.id,
+                    i.description,
+                    i.status,
+                    i.created_at.format("%d-%b-%y %H:%M:%S"),
+                    i.updated_at.format("%d-%b-%y %H:%M:%S")
+                );
+            }
+        }
+    }
+
+    fn list_done(&self) {
+        let tasks: Vec<Task> = self.read_json();
+        if tasks.len() == 0 {
+            println!("There are currently no tasks");
+        } else {
+            let mut done: Vec<Task> = Vec::new();
+            for i in tasks.iter() {
+                match i.status.as_str() {
+                    "done" => {
+                        done.push(i.clone());
+                    }
+                    _ => (),
+                }
+            }
+            if done.len() > 0 {
+                for i in done.iter() {
+                    println!(
+                        "{} {}, status: {}, {}, {}",
+                        i.id,
+                        i.description,
+                        i.status,
+                        i.created_at.format("%d-%b-%y %H:%M:%S"),
+                        i.updated_at.format("%d-%b-%y %H:%M:%S")
+                    );
+                }
+            } else {
+                println!("There are no completed tasks");
+            }
+        }
+    }
+
+    fn list_todo(&self) {
+        let tasks: Vec<Task> = self.read_json();
+        if tasks.len() == 0 {
+            println!("There are currently no tasks");
+        } else {
+            let mut todo: Vec<Task> = Vec::new();
+            for i in tasks.iter() {
+                match i.status.as_str() {
+                    "todo" => {
+                        todo.push(i.clone());
+                    }
+                    _ => (),
+                }
+            }
+            if todo.len() > 0 {
+                for i in todo {
+                    println!(
+                        "{} {}, status: {}, {}, {}",
+                        i.id,
+                        i.description,
+                        i.status,
+                        i.created_at.format("%d-%b-%y %H:%M:%S"),
+                        i.updated_at.format("%d-%b-%y %H:%M:%S")
+                    );
+                }
+            } else {
+                println!("There are currently no pending tasks");
+            }
+        }
+    }
+
+    fn list_in_progress(&self) {
+        let tasks: Vec<Task> = self.read_json();
+        if tasks.len() == 0 {
+            println!("There are currently no tasks");
+        } else {
+            let mut in_progress: Vec<Task> = Vec::new();
+            for i in tasks.iter() {
+                match i.status.as_str() {
+                    "in-progress" => {
+                        in_progress.push(i.clone());
+                    }
+                    _ => (),
+                }
+            }
+            if in_progress.len() > 0 {
+                for i in in_progress.iter() {
+                    println!(
+                        "{} {}, status: {}, {}, {}",
+                        i.id,
+                        i.description,
+                        i.status,
+                        i.created_at.format("%d-%b-%y %H:%M:%S"),
+                        i.updated_at.format("%d-%b-%y %H:%M:%S")
+                    );
+                }
+            } else {
+                println!("There are currently no in progress tasks");
+            }
+        }
     }
 }
 
@@ -79,7 +188,7 @@ fn main() {
         return;
     }
 
-    let command = &args[1];
+    let command: &String = &args[1];
 
     match command.as_str() {
         "add" => {
@@ -88,8 +197,19 @@ fn main() {
                 return;
             }
             task_cli.add(String::from(&args[2]))
-        },
-        "list" => task_cli.list(),
+        }
+        "list" => {
+            if args.len() < 3 {
+                task_cli.list();
+            } else {
+                match args[2].as_str() {
+                    "done" => task_cli.list_done(),
+                    "todo" => task_cli.list_todo(),
+                    "in-progress" => task_cli.list_in_progress(),
+                    _ => task_cli.list(),
+                }
+            }
+        }
         _ => println!("command: \"{}\" not found", command),
     }
 }

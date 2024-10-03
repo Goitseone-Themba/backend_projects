@@ -13,11 +13,12 @@ struct Task {
     updated_at: DateTime<Utc>,
 }
 
-// data model for the json file
+// Our application
 struct TaskCli {
     json_filename: String,
 }
 
+// Behavior of  our application
 impl TaskCli {
     fn new() -> Self {
         TaskCli {
@@ -54,7 +55,7 @@ impl TaskCli {
         println!("{}", this_time.format("%d-%b-%y %H:%M:%S"));
 
         let new_task: Task = Task {
-            id: u32::try_from(tasks.len() + 1).unwrap(),
+            id: tasks[tasks.len() - 1].id + 1,
             description,
             status: String::from("todo"),
             created_at: this_time,
@@ -84,6 +85,7 @@ impl TaskCli {
         }
     }
 
+    // list all tasks with status done
     fn list_done(&self) {
         let tasks: Vec<Task> = self.read_json();
         if tasks.len() == 0 {
@@ -115,6 +117,7 @@ impl TaskCli {
         }
     }
 
+    //list all tasks with status todo
     fn list_todo(&self) {
         let tasks: Vec<Task> = self.read_json();
         if tasks.len() == 0 {
@@ -146,6 +149,7 @@ impl TaskCli {
         }
     }
 
+    //list all tasks with status in-progress
     fn list_in_progress(&self) {
         let tasks: Vec<Task> = self.read_json();
         if tasks.len() == 0 {
@@ -172,25 +176,97 @@ impl TaskCli {
                     );
                 }
             } else {
-                println!("There are currently no in progress tasks");
+                println!("There are currently no in-progress tasks");
             }
         }
     }
+    
+    // Takes an id and Searched through a Vector of tasks and returns the index
+    fn find_task(&self, list: &Vec<Task>,  target: &u32) -> Result<usize, String> {
+        let mut left: usize = 0;
+        let mut right: usize = list.len()-1;
+        let mut mid: usize; 
 
-    fn update(&self,id: &u32, description: &String) {
-        let mut tasks: Vec<Task> = self.read_json();
-        for i in &mut tasks {
-            if i.id == *id {
-                i.description = description.to_string();
+        while left <= right {
+            mid = (left + right)/2;
+            if list[mid].id == *target {
+                return Ok(mid);
+            } else if list[mid].id > *target {
+                right = mid - 1;
+            } else {
+                left = mid + 1;
             }
         }
-        self.write_json(&tasks);
+        return Err(String::from("task not found ID:"));
+    }
+
+    //update a task
+    fn update(&self,id: &u32, description: &String) {
+        let mut tasks = self.read_json();
+
+        match self.find_task(&tasks, id) {
+            Ok(index) => {
+                tasks[index].description = description.to_string();
+                self.write_json(&tasks);
+                println!("Task updated successfully (ID: {})", id); 
+            },
+            Err(e) => println!("{} {}", e, id),
+        }
+    }
+
+
+    //delete a task
+    fn delete(&self, id: &u32) {
+        let mut tasks = self.read_json();
+
+        match self.find_task(&tasks, &id) {
+            Ok(index) => {
+                tasks.remove(index);
+                self.write_json(&tasks);
+                println!("Task deleted successfully (ID: {})", id); 
+            },
+            Err(e) => println!("{} {}", e, id),
+        }
+
+    }
+   
+    //change a task's status to in-progress
+    fn mark_in_progress(&self, id: &u32) {
+        let mut tasks = self.read_json();
+
+        match self.find_task(&tasks, &id) {
+            Ok(index) => {
+                tasks[index].status = String::from("in-progress");
+                self.write_json(&tasks);
+                println!("Task updated successfully (ID: {})", id); 
+
+            },
+            Err(e) => println!("{} {}", e, id),
+        }
+    }
+
+    //change a task's status to done
+    fn mark_done(&self, id: &u32) {
+        let mut tasks = self.read_json();
+
+        match self.find_task(&tasks, &id) {
+            Ok(index) => {
+                tasks[index].status = String::from("done");
+                 self.write_json(&tasks);
+                println!("Task updated successfully (ID: {})", id); 
+
+            },
+            Err(e) => println!("{} {}", e, id),
+        }
+ 
     }
 }
 
 fn main() {
+    // initialize the application
     let task_cli: TaskCli = TaskCli::new();
 
+    // collect command line arguments
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 2 {
@@ -200,39 +276,65 @@ fn main() {
 
     let command: &String = &args[1];
 
+    // parse the commands
     match command.as_str() {
         "add" => {
             if args.len() != 3 {
-                println!("add usage: {} add <your task>", &args[0]);
+                println!("Adding Failed! \nusage: {} add <your task>", &args[0]);
                 return;
             }
             task_cli.add(String::from(&args[2]))
         }
         "list" => {
-            if args.len() < 3 {
+            if args.len() != 2 && args.len() != 3 {
+                println!("Listing Failed! \nusage: {} list", &args[0]);
+                println!("or \n{} list <status>", args[0]);
+            }
+            else if args.len() == 2 {
                 task_cli.list();
             } else {
                 match args[2].as_str() {
                     "done" => task_cli.list_done(),
                     "todo" => task_cli.list_todo(),
                     "in-progress" => task_cli.list_in_progress(),
-                    _ => task_cli.list(),
+                    _ => println!("Error Listing! \nusage: {} list <todo/ in-progress/ done>", args[0]),
                 }
             }
         },
         "update" => {
-            if args.len() < 4 {
-                println!("update usage: {} update <id> <new description>", &args[0]);
+            if args.len() != 4 {
+                println!("Error Updating! \nusage: {} update <id> <new description>", &args[0]);
                 return;
             } else {
-                let id: u32 = match &args[2].trim().parse() {
-                    Ok(num) => *num,
-                    Err(_) => {
-                        print!("Error! can't read id: {}", &args[2]);
-                        return;
-                    },
-                };
+                let id: u32 = args[2].trim().parse::<u32>().expect("Failed to read ID");
                 task_cli.update(&id, &args[3]);
+            }
+        },
+        "delete" => {
+            if args.len() != 3 {
+                println!("Error Deleting! \nusage: {} delete <id>", &args[0]);
+                return;
+            } else {
+                let id: u32 = args[2].trim().parse::<u32>().expect("Failed to read ID");
+                task_cli.delete(&id);
+            }
+        },
+        "mark-in-progress" => {
+            if args.len() != 3 {
+                println!("Error Marking as in progress! \nusage: {} mark-in-progress <id>", &args[0]);
+                return;
+            } else {
+                let id: u32 = args[2].trim().parse::<u32>().expect("Failed to read ID");
+                task_cli.mark_in_progress(&id);
+            }
+        },
+        "mark-done" => {
+            if args.len() != 3 {
+                println!("Error Marking as done! \nusage: {} mark-done <id>", &args[0]);
+                return;
+            } else {
+                let id: u32 = args[2].trim().parse::<u32>().expect("Failed to read ID");
+                task_cli.mark_done(&id);
             }
         },
         _ => println!("command: \"{}\" not found", command),

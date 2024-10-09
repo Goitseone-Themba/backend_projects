@@ -51,19 +51,28 @@ impl TaskCli {
     fn add(&self, description: String) {
         let mut tasks: Vec<Task> = self.read_json();
         let this_time: DateTime<Utc> = Utc::now();
-
-        println!("{}", this_time.format("%d-%b-%y %H:%M:%S"));
-
-        let new_task: Task = Task {
-            id: tasks[tasks.len() - 1].id + 1,
-            description,
-            status: String::from("todo"),
-            created_at: this_time,
-            updated_at: this_time,
-        };
-        tasks.push(new_task);
+        
+        if tasks.len() == 0 {
+            let new_task: Task = Task {
+                id: 1,
+                description,
+                status: String::from("todo"),
+                created_at: this_time,
+                updated_at: this_time,
+            };
+            tasks.push(new_task);
+        } else {
+            let new_task: Task = Task {
+                id: tasks[tasks.len() - 1].id + 1,
+                description,
+                status: String::from("todo"),
+                created_at: this_time,
+                updated_at: this_time,
+            };
+            tasks.push(new_task);
+        }
         self.write_json(&tasks);
-        println!("Tasks added successfully (ID: {})", tasks.len());
+        println!("Tasks added successfully (ID: {})", tasks[tasks.len() - 1].id);
     }
 
     // list all tasks
